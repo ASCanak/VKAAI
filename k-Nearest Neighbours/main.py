@@ -1,6 +1,14 @@
 from scipy.spatial import distance
 import numpy as np
 
+def createDataset(fileName):
+  return np.genfromtxt(fileName, delimiter=';', usecols=[1, 2, 3, 4, 5, 6, 7],
+                       converters={5: lambda s: 0 if s == b"-1" else float(s),
+                                   7: lambda s: 0 if s == b"-1" else float(s)})
+
+def createDates(fileName):
+  return np.genfromtxt(fileName, delimiter=';', usecols=[0])
+
 def labelData(dates): #labels the datasets with the correct season
   labels = []
   for label in dates:
@@ -34,6 +42,7 @@ def calculateBestK(data, dataLabels, testData, testDataLabels, k_range_min = 1, 
       best_k_index = k
 
   print(best_k_index, ' is the most accurate K with an accuracy of: ', best_k_accuracy, '%')
+
   return best_k_index
 
 def kNN(data, dataLabels, testData, k):
@@ -48,40 +57,28 @@ def kNN(data, dataLabels, testData, k):
   for i in range(k):
     nearestNeighbours[i] = distances[i][1]
 
-  countDict = dict()
-  mostOccuringString = ""
-  mostOccuringNumber = 0
+  count = {}
   for neighbour in nearestNeighbours:
     labelString = dataLabels[neighbour]
-    if labelString in countDict.keys():
-      countDict[labelString] += 1
+    if labelString in count:
+      count[labelString] += 1
     else:
-      countDict[labelString] = 1
-    if countDict[labelString] > mostOccuringNumber:
-      mostOccuringString = labelString
-      mostOccuringNumber = countDict[labelString]
-  return mostOccuringString
+      count[labelString] = 1
+
+  return max(count.items(), key= lambda x: x[1])[0]
 
 def main():
-  data = np.genfromtxt('dataset1.csv', delimiter=';', usecols=[1, 2, 3, 4, 5, 6, 7],
-                       converters={5: lambda s: 0 if s == b"-1" else float(s),
-                                   7: lambda s: 0 if s == b"-1" else float(s)})
-  dates = np.genfromtxt('dataset1.csv', delimiter=';', usecols=[0])
-  labels = labelData(dates)
+  data = createDataset('dataset1.csv')
+  labels = labelData(createDates('dataset1.csv'))
 
-  data_validation = np.genfromtxt('validation1.csv', delimiter=';', usecols=[1, 2, 3, 4, 5, 6, 7],
-                                  converters={5: lambda s: 0 if s == b"-1" else float(s),
-                                              7: lambda s: 0 if s == b"-1" else float(s)})
-  dates_validation = np.genfromtxt('validation1.csv', delimiter=';', usecols=[0])
-  labels_validation = labelData(dates_validation)
+  validation_Data = createDataset('validation1.csv')
+  validation_Labels = labelData(createDates('validation1.csv'))
 
-  unlabeled_Data = np.genfromtxt('days.csv', delimiter=';', usecols=[1, 2, 3, 4, 5, 6, 7],
-                                  converters={5: lambda s: 0 if s == b"-1" else float(s),
-                                              7: lambda s: 0 if s == b"-1" else float(s)})
-
-  optimal_K = calculateBestK(data, labels, data_validation, labels_validation)
-
+  unlabeled_Data = createDataset('days.csv')
   estimated_labels = []
+
+  optimal_K = calculateBestK(data, labels, validation_Data, validation_Labels)
+
   for items in unlabeled_Data:
     estimated_labels.append(kNN(data, labels, items, optimal_K))
 
